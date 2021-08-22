@@ -61,7 +61,8 @@
 /// $ echo "hello ${name}" | si > processed.txt
 
 use std::path::PathBuf;
-use std::env;
+
+use clap::{Arg, App};
 
 
 fn interpolate_with_env(buf: &mut String) {
@@ -73,8 +74,22 @@ fn interpolate_with_file(buf: &mut String, filename: &PathBuf) {
 }
 
 fn main() {
-    env::args().skip(1);
-    
-
-
+    let cli = App::new("si")
+        .version("1.0")
+        .author("David Clevenger <dclevenger00@gmail.com>")
+        .arg(Arg::with_name("verbose")
+            .short("v")
+            .long("verbose")
+            .help("acknowledge found and not found results for variable resolution to stderr"))
+        .arg(Arg::with_name("file")
+            .short("f")
+            .long("file")
+            .takes_value(true)
+            .value_name("FILE")
+            .help("text or json file to process with variable definitions"))
+        .arg(Arg::with_name("error")
+            .short("e")
+            .long("error")
+            .help("terminate on not found results"))
+        .get_matches();
 }

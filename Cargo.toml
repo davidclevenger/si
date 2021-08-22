@@ -5,6 +5,12 @@ version = "0.1.0"
 edition = "2018"
 license = "MIT"
 
-
+[[bin]]
+name = "si"
+path = "src/main.rs"
+test = false
+bench = false
 
 [dependencies]
+clap = "2.33.3"
+serde = "1.0.128"
