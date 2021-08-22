@@ -1,4 +1,4 @@
-# si - unix program for string interpolation
+# si - unix program for stream interpolation
 
 [![Crates.io][crates-badge]][crates-url]
 [![MIT licensed][mit-badge]][mit-url]
