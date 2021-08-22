@@ -60,21 +60,51 @@
 /// use stdin and stdout
 /// $ echo "hello ${name}" | si > processed.txt
 
-use std::path::PathBuf;
+use std::{io::{self, Read, Write}, collections::HashMap, path::Path};
 
 use clap::{Arg, App};
-
-
-fn interpolate_with_env(buf: &mut String) {
-    
+enum Mode {
+    TextFile(String),
+    JsonFile(String),
+    Env
 }
 
-fn interpolate_with_file(buf: &mut String, filename: &PathBuf) {
-    
+fn parse(mode: Mode) -> HashMap<String, String> {
+    let mut mapping = HashMap::new();
+
+    match mode {
+        Mode::TextFile(_) => todo!(),
+        Mode::JsonFile(_) => todo!(),
+        Mode::Env => {
+            mapping = std::env::vars().collect();
+        },
+    }
+
+    return mapping;
+}
+
+fn interpolate(verbose: bool, strict: bool, mapping: HashMap<String, String>) {
+    let mut buf = String::new();
+    match io::stdin().read_to_string(&mut buf) {
+        Ok(_sz) => (),
+        Err(_) => panic!("No input provided"),
+    };
+
+    for (key, value) in mapping.iter() {
+        let buf = buf.replace(format!("${{{}}}", key).as_str(), value);
+    }
+
+    // TODO: strict
+    // TODO: verbose
+
+    match io::stdout().lock().write(buf.as_bytes()) {
+        Ok(_sz) => (),
+        Err(e) => panic!("{}", e),
+    }
 }
 
 fn main() {
-    let cli = App::new("si")
+    let matches = App::new("si")
         .version("1.0")
         .author("David Clevenger <dclevenger00@gmail.com>")
         .arg(Arg::with_name("verbose")
@@ -92,4 +122,22 @@ fn main() {
             .long("error")
             .help("terminate on not found results"))
         .get_matches();
+    
+    let strict = matches.is_present("error");
+    let verbose = matches.is_present("verbose");
+    let mode: Mode = match matches.value_of("file") {
+        Some(p) => match Path::new(p).extension() {
+            Some(s) => match s.to_ascii_lowercase().to_str() {
+                Some("txt") => Mode::TextFile(s.to_string_lossy().to_string()),
+                Some("json") => Mode::JsonFile(s.to_string_lossy().to_string()),
+                Some(_) => panic!("Only text (\"txt\") and JSON (\"json\") files are supported"),
+                None => panic!("Path is not UTF-8 encoded")
+            }
+            None => panic!("Unable to detect file extension"),
+        }
+        None => Mode::Env
+    };
+
+    let mapping = parse(mode);
+    interpolate(verbose, strict, mapping);
 }
