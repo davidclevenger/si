@@ -141,7 +141,7 @@ fn interpolate(verbose: bool, strict: bool, mapping: HashMap<String, String>) {
 
 fn main() {
     let matches = App::new("si")
-        .version("1.0")
+        .version("0.1.1")
         .author("David Clevenger <dclevenger00@gmail.com>")
         .arg(Arg::with_name("verbose")
             .short("v")
