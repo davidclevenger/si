@@ -60,9 +60,15 @@
 /// use stdin and stdout
 /// $ echo "hello ${name}" | si > processed.txt
 
-use std::{io::{self, Read, Write}, collections::HashMap, path::Path};
+use std::{
+    io::{self, prelude::*, Read, Write, BufReader},
+    collections::HashMap, 
+    path::Path,
+    fs::File
+};
 
 use clap::{Arg, App};
+
 enum Mode {
     TextFile(String),
     JsonFile(String),
@@ -73,8 +79,19 @@ fn parse(mode: Mode) -> HashMap<String, String> {
     let mut mapping = HashMap::new();
 
     match mode {
-        Mode::TextFile(_) => todo!(),
-        Mode::JsonFile(_) => todo!(),
+        Mode::TextFile(p) => {
+            let f = File::open(p).unwrap();
+            for line in BufReader::new(f).lines() {
+                let line = match line {
+                    Ok(line) => line,
+                    Err(e) => panic!("{}", e)
+                };
+
+                let parts: Vec<&str> = line.split("=").collect();
+                mapping.insert(parts[0].to_string(), parts[1].to_string());
+            }
+        },
+        Mode::JsonFile(p) => todo!(),
         Mode::Env => {
             mapping = std::env::vars().collect();
         },
@@ -84,18 +101,37 @@ fn parse(mode: Mode) -> HashMap<String, String> {
 }
 
 fn interpolate(verbose: bool, strict: bool, mapping: HashMap<String, String>) {
-    let mut buf = String::new();
-    match io::stdin().read_to_string(&mut buf) {
+    let buf = &mut String::new();
+    match io::stdin().read_to_string(&mut *buf) {
         Ok(_sz) => (),
         Err(_) => panic!("No input provided"),
     };
 
-    for (key, value) in mapping.iter() {
-        let buf = buf.replace(format!("${{{}}}", key).as_str(), value);
+    let mut travel: usize = 0;
+    while let Some(begin) = buf[travel..].find("${") {
+        let begin= travel + begin;
+        let end = match buf[begin..].find("}") {
+            Some(end) => begin + end, // indexing from location of opening placeholder, so add begin index
+            None => {
+                let lineno = buf[..travel].as_bytes().iter().filter(|&&c| c == b'\n').count();
+                panic!("Mismatched placeholders on line {}", lineno);
+            } 
+        };
+        
+        let key = &buf[begin+2..end];
+        match mapping.get_key_value(key) {
+            Some((k, v)) => {
+                if verbose { eprintln!("Matched key: {} => {}", k, v) }
+                buf.replace_range(begin..end+1, v); // include placeholders in range ([begin, end])
+                travel = begin + v.len();
+             },
+            None => {
+                if strict { panic!("Could not resolve key: {}", key); }
+                if verbose { eprintln!("Could not resolve key: {}", key) }
+                travel = end + 1;
+            }
+        }
     }
-
-    // TODO: strict
-    // TODO: verbose
 
     match io::stdout().lock().write(buf.as_bytes()) {
         Ok(_sz) => (),
