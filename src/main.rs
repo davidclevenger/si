@@ -71,7 +71,6 @@ use clap::{Arg, App};
 
 enum Mode {
     TextFile(String),
-    JsonFile(String),
     Env
 }
 
@@ -88,10 +87,10 @@ fn parse(mode: Mode) -> HashMap<String, String> {
                 };
 
                 let parts: Vec<&str> = line.split("=").collect();
+                if parts.len() != 2 { continue; } // Ignore blank and comment lines
                 mapping.insert(parts[0].to_string(), parts[1].to_string());
             }
         },
-        Mode::JsonFile(p) => todo!(),
         Mode::Env => {
             mapping = std::env::vars().collect();
         },
@@ -152,7 +151,7 @@ fn main() {
             .long("file")
             .takes_value(true)
             .value_name("FILE")
-            .help("text or json file to process with variable definitions"))
+            .help("text file to process with variable definitions"))
         .arg(Arg::with_name("error")
             .short("e")
             .long("error")
@@ -165,8 +164,7 @@ fn main() {
         Some(p) => match Path::new(p).extension() {
             Some(s) => match s.to_ascii_lowercase().to_str() {
                 Some("txt") => Mode::TextFile(s.to_string_lossy().to_string()),
-                Some("json") => Mode::JsonFile(s.to_string_lossy().to_string()),
-                Some(_) => panic!("Only text (\"txt\") and JSON (\"json\") files are supported"),
+                Some(_) => panic!("Only text (\"txt\") files are supported"),
                 None => panic!("Path is not UTF-8 encoded")
             }
             None => panic!("Unable to detect file extension"),
